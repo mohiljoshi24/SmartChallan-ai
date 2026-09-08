@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+ENV/
+
+# Large video uploads and temporary processed renders
+storage/uploads/*.mp4
+storage/uploads/*.mov
+storage/uploads/*.avi
+storage/processed/*.mp4
+*.mov
+
+# IDE and OS metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.bak

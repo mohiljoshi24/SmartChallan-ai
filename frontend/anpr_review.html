@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANPR Verification & Officer Review Queue — SmartChallan AI</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --surface: #111827;
+      --surface-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Navigation */
+    .navbar {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-main); }
+    .brand-logo { font-size: 1.6rem; }
+    .brand-title { font-weight: 800; font-size: 1.25rem; }
+    .brand-tag { font-size: 0.7rem; background: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
+    .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+    .nav-link { color: var(--text-muted); text-decoration: none; padding: 0.5rem 0.85rem; border-radius: 6px; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { color: var(--text-main); background-color: var(--surface-card); }
+    .nav-link.active { border-bottom: 2px solid var(--primary); }
+
+    .container { max-width: 1300px; margin: 0 auto; padding: 2rem; width: 100%; flex: 1; }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .page-title { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.35rem; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.95rem; }
+
+    /* Review Layout */
+    .review-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 900px) {
+      .review-layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .plate-crop-container {
+      background: #000;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 220px;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .plate-crop-img {
+      max-width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      filter: contrast(1.15) brightness(1.05);
+    }
+
+    .badge-confidence {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: rgba(16, 185, 129, 0.9);
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .plate-input {
+      width: 100%;
+      background: #0f172a;
+      border: 2px solid var(--primary);
+      color: #fff;
+      font-family: 'Consolas', monospace;
+      font-size: 1.6rem;
+      font-weight: 800;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      outline: none;
+    }
+    .text-input {
+      width: 100%;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      font-size: 0.9rem;
+    }
+    .meta-key { color: var(--text-muted); }
+    .meta-val { font-weight: 600; color: #fff; }
+
+    .btn {
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+    .btn-approve { background: var(--success); color: #fff; flex: 1; }
+    .btn-approve:hover { background: #059669; }
+    .btn-dismiss { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .btn-dismiss:hover { background: rgba(239, 68, 68, 0.25); }
+    .btn-skip { background: var(--surface-card); color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-skip:hover { color: #fff; }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem; right: 2rem;
+      background: var(--surface-card);
+      border: 1px solid var(--success);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <span class="brand-logo">🛡️</span>
+      <span class="brand-title">SmartChallan AI</span>
+      <span class="brand-tag">v2.4</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">⚡ Command Hub</a>
+      <a href="live_surveillance.html" class="nav-link">🔴 Live Surveillance</a>
+      <a href="challan_registry.html" class="nav-link">📑 Challan Registry</a>
+      <a href="analytics_dashboard.html" class="nav-link">📊 Analytics BI</a>
+      <a href="anpr_review.html" class="nav-link active">🔍 ANPR Review</a>
+      <a href="citizen_portal.html" class="nav-link">💳 Citizen Portal</a>
+      <a href="system_settings.html" class="nav-link">⚙️ Settings</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="header-bar">
+      <div>
+        <h1 class="page-title">🔍 ANPR Verification & Human-in-the-Loop Review</h1>
+        <p class="page-subtitle">Inspect cropped plate telemetry, verify character confidence, and approve court-ready E-Challans.</p>
+      </div>
+      <div style="background: var(--surface); padding: 8px 16px; border: 1px solid var(--border); border-radius: 10px; display: flex; gap: 1.5rem; font-size: 0.85rem;">
+        <div>Queue Remaining: <b style="color: #f87171;" id="queueCount">0</b></div>
+        <div>OCR Accuracy: <b style="color: #4ade80;">96.4%</b></div>
+      </div>
+    </div>
+
+    <div class="review-layout">
+      <!-- Left: Visual Crop -->
+      <div class="card">
+        <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">📷 Cropped Plate & Scene Telemetry</h2>
+        <div class="plate-crop-container">
+          <div class="badge-confidence" id="ocrConfidenceBadge">OCR 94%</div>
+          <img class="plate-crop-img" id="plateImg" src="" alt="Cropped Plate">
+        </div>
+        <div style="background: #000; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 160px;">
+          <img id="fullSceneImg" src="" alt="Full Scene" style="width: 100%; height: 100%; object-fit: contain;">
+        </div>
+        <div style="text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">CCTV Scene at Detection Line</div>
+      </div>
+
+      <!-- Right: Officer Action Form -->
+      <div class="card">
+        <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">✍️ Officer Verification & Summons Dispatch</h2>
+        
+        <div class="form-group">
+          <label class="form-label">Verified License Plate Registration Number</label>
+          <input type="text" class="plate-input" id="plateInput" value="">
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Correct any optical character discrepancies before official issuance.</div>
+        </div>
+
+        <div style="background: var(--surface-card); border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem;">
+          <div class="meta-row"><span class="meta-key">Challan Reference:</span><span class="meta-val" id="metaChallanId">--</span></div>
+          <div class="meta-row"><span class="meta-key">Capture Timestamp:</span><span class="meta-val" id="metaTimestamp">--</span></div>
+          <div class="meta-row"><span class="meta-key">Camera / Junction:</span><span class="meta-val" id="metaCamera">--</span></div>
+          <div class="meta-row"><span class="meta-key">Alleged Offense:</span><span class="meta-val" style="color: #f87171;" id="metaOffense">No Helmet</span></div>
+          <div class="meta-row" style="border: none;"><span class="meta-key">Compounding Penalty:</span><span class="meta-val" style="color: #4ade80;" id="metaFine">₹1,000</span></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Officer Audit Notes</label>
+          <input type="text" class="text-input" id="officerNotes" value="Verified by Traffic Inspector on duty">
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: auto;">
+          <button class="btn btn-approve" onclick="approveCurrent()">✅ Approve & Issue Challan</button>
+          <button class="btn btn-dismiss" onclick="dismissCurrent()">❌ Dismiss</button>
+          <button class="btn btn-skip" onclick="nextRecord()">⏭️ Skip</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <span>✅</span>
+    <span id="toastMsg">Plate verified successfully!</span>
+  </div>
+
+  <script>
+    let reviewQueue = [];
+    let currentIndex = 0;
+
+    async function loadReviewQueue() {
+      try {
+        const res = await fetch('/api/violations?status=Issued&limit=100');
+        reviewQueue = await res.json();
+        document.getElementById('queueCount').textContent = reviewQueue.length;
+        if (reviewQueue.length > 0) {
+          currentIndex = 0;
+          displayCurrent();
+        } else {
+          showEmptyQueue();
+        }
+      } catch (err) {
+        console.error("Error loading queue:", err);
+      }
+    }
+
+    function displayCurrent() {
+      if (currentIndex >= reviewQueue.length) {
+        showEmptyQueue();
+        return;
+      }
+      const v = reviewQueue[currentIndex];
+      document.getElementById('plateInput').value = v.plate_number;
+      document.getElementById('metaChallanId').textContent = v.challan_id;
+      document.getElementById('metaTimestamp').textContent = v.timestamp;
+      document.getElementById('metaCamera').textContent = v.camera_id || 'CAM-01';
+      document.getElementById('metaOffense').textContent = v.offense || 'No Helmet';
+      document.getElementById('metaFine').textContent = `₹${v.fine_amount.toLocaleString()}`;
+
+      document.getElementById('plateImg').src = v.plate_image_path ? `/${v.plate_image_path}` : '';
+      document.getElementById('fullSceneImg').src = v.full_image_path ? `/${v.full_image_path}` : '';
+      document.getElementById('ocrConfidenceBadge').textContent = `OCR ${Math.round((v.confidence || 0.95) * 100)}%`;
+      document.getElementById('queueCount').textContent = reviewQueue.length - currentIndex;
+    }
+
+    function showEmptyQueue() {
+      document.querySelector('.review-layout').innerHTML = `
+        <div class="card" style="grid-column: span 2; text-align: center; padding: 4rem;">
+          <div style="font-size: 3.5rem; margin-bottom: 1rem;">🎉</div>
+          <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem;">Review Queue Cleared!</h2>
+          <p style="color: var(--text-muted); margin-bottom: 1.5rem;">All automated camera detections have been verified. No pending items.</p>
+          <button class="btn" style="margin: 0 auto; background: var(--primary);" onclick="loadReviewQueue()">🔄 Check for New Detections</button>
+        </div>
+      `;
+    }
+
+    async function approveCurrent() {
+      const v = reviewQueue[currentIndex];
+      const verifiedPlate = document.getElementById('plateInput').value.trim().toUpperCase();
+      const notes = document.getElementById('officerNotes').value;
+
+      try {
+        const res = await fetch('/api/verify_plate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challan_id: v.challan_id,
+            verified_plate: verifiedPlate,
+            notes: notes
+          })
+        });
+        if (res.ok) {
+          showToast(`Challan ${v.challan_id} approved for ${verifiedPlate}!`);
+          currentIndex++;
+          displayCurrent();
+        }
+      } catch (err) { alert('Error: ' + err); }
+    }
+
+    async function dismissCurrent() {
+      const v = reviewQueue[currentIndex];
+      const notes = document.getElementById('officerNotes').value;
+
+      try {
+        const res = await fetch('/api/dismiss_violation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challan_id: v.challan_id,
+            notes: notes || "Dismissed during officer review"
+          })
+        });
+        if (res.ok) {
+          showToast(`Citation ${v.challan_id} dismissed.`);
+          currentIndex++;
+          displayCurrent();
+        }
+      } catch (err) { alert('Error: ' + err); }
+    }
+
+    function nextRecord() {
+      currentIndex++;
+      displayCurrent();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.style.display = 'flex';
+      setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    window.onload = loadReviewQueue;
+  </script>
+</body>
+</html>

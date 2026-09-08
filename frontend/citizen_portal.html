@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citizen E-Challan Payment & Dispute Portal — SmartChallan AI</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --surface: #111827;
+      --surface-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Navigation */
+    .navbar {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-main); }
+    .brand-logo { font-size: 1.6rem; }
+    .brand-title { font-weight: 800; font-size: 1.25rem; }
+    .brand-tag { font-size: 0.7rem; background: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
+    .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+    .nav-link { color: var(--text-muted); text-decoration: none; padding: 0.5rem 0.85rem; border-radius: 6px; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { color: var(--text-main); background-color: var(--surface-card); }
+    .nav-link.active { border-bottom: 2px solid var(--primary); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem; width: 100%; flex: 1; }
+
+    /* Citizen Hero */
+    .citizen-hero {
+      text-align: center;
+      padding: 3rem 1.5rem 2rem;
+    }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+    }
+    .hero-h1 { font-size: 2.4rem; font-weight: 800; color: #fff; margin-bottom: 0.75rem; }
+    .hero-p { font-size: 1.05rem; color: var(--text-muted); max-width: 650px; margin: 0 auto 2rem; }
+
+    /* Search Bar */
+    .search-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      gap: 1rem;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+      max-width: 700px;
+      margin: 0 auto 3rem;
+    }
+    .search-input {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 600;
+      flex: 1;
+      outline: none;
+      letter-spacing: 0.05em;
+    }
+    .btn-search {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.85rem 1.75rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+    .btn-search:hover { background: var(--primary-hover); }
+
+    /* Results */
+    .results-container { display: flex; flex-direction: column; gap: 1.5rem; }
+    .challan-result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 240px 1fr 200px;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    @media (max-width: 850px) {
+      .challan-result-card { grid-template-columns: 1fr; }
+    }
+
+    .result-thumb {
+      width: 100%;
+      height: 150px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: #000;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .status-issued { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-paid { background-color: rgba(16, 185, 129, 0.15); color: #4ade80; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .btn-pay {
+      background: var(--success);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .btn-pay:hover { background: #059669; }
+
+    /* Payment Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1.5rem;
+    }
+    .payment-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      padding: 2rem;
+      text-align: center;
+    }
+    .upi-qr-box {
+      background: #fff;
+      padding: 1rem;
+      border-radius: 12px;
+      display: inline-block;
+      margin: 1.25rem 0;
+    }
+    .upi-qr-box img { width: 180px; height: 180px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <span class="brand-logo">🛡️</span>
+      <span class="brand-title">SmartChallan AI</span>
+      <span class="brand-tag">v2.4</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">⚡ Command Hub</a>
+      <a href="live_surveillance.html" class="nav-link">🔴 Live Surveillance</a>
+      <a href="challan_registry.html" class="nav-link">📑 Challan Registry</a>
+      <a href="analytics_dashboard.html" class="nav-link">📊 Analytics BI</a>
+      <a href="anpr_review.html" class="nav-link">🔍 ANPR Review</a>
+      <a href="citizen_portal.html" class="nav-link active">💳 Citizen Portal</a>
+      <a href="system_settings.html" class="nav-link">⚙️ Settings</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="citizen-hero">
+      <div class="hero-tag">National Virtual Court & Public Services</div>
+      <h1 class="hero-h1">Citizen E-Challan Payment Gateway</h1>
+      <p class="hero-p">Search your vehicle registration number or Challan ID to view visual proof of offense and settle compounding penalties online.</p>
+
+      <div class="search-card">
+        <input type="text" class="search-input" id="plateSearchInput" placeholder="Enter Vehicle No. (e.g., KA-16, DL-01) or Challan ID">
+        <button class="btn-search" onclick="searchChallans()">🔍 Search Citations</button>
+      </div>
+    </div>
+
+    <div id="resultsContainer" class="results-container">
+      <!-- Search results will inject here -->
+      <div style="text-align: center; color: var(--text-muted); padding: 3rem; background: var(--surface); border: 1px dashed var(--border); border-radius: 16px;">
+        Enter your motorcycle registration number above to check pending traffic citations.
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div class="modal-overlay" id="payModal">
+    <div class="payment-modal">
+      <h3 style="font-size: 1.3rem; font-weight: 800; color: #fff;">💳 Parivahan Instant UPI Settlement</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;" id="modalChallanText">Challan: --</p>
+      
+      <div class="upi-qr-box">
+        <img id="upiQrImg" src="" alt="UPI Payment QR Code">
+      </div>
+
+      <div style="font-size: 1.4rem; font-weight: 800; color: #4ade80; margin-bottom: 1rem;" id="modalAmount">₹1,000.00</div>
+      
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+        Scan with Google Pay, PhonePe, Paytm, or BHIM. Instant clearance certificate will be issued.
+      </p>
+
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="btn-pay" onclick="confirmPayment()">Simulate Successful Payment</button>
+        <button class="btn-pay" style="background: var(--surface-card); color: var(--text-muted);" onclick="closePayModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeChallanToPay = null;
+
+    async function searchChallans() {
+      const q = document.getElementById('plateSearchInput').value.trim();
+      if (!q) return;
+
+      const container = document.getElementById('resultsContainer');
+      container.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Searching municipal database for '${q}'...</div>`;
+
+      try {
+        const res = await fetch(`/api/search_plate?plate=${encodeURIComponent(q)}`);
+        const records = await res.json();
+
+        if (!records || records.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; background: var(--surface); border: 1px solid var(--border); border-radius: 16px;">
+              <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✅</div>
+              <h3 style="color: #fff; font-size: 1.2rem; font-weight: 700;">No Pending Violations Found!</h3>
+              <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">Vehicle '${q}' has a clean driving record with zero outstanding citations.</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = records.map(v => {
+          const isPaid = v.status === 'Paid';
+          const thumb = v.full_image_path ? `/${v.full_image_path}` : '';
+          const pdf = v.pdf_path ? `/${v.pdf_path}` : '#';
+
+          return `
+            <div class="challan-result-card">
+              <img class="result-thumb" src="${thumb}" alt="Evidence Photo">
+              <div>
+                <span class="status-badge ${isPaid ? 'status-paid' : 'status-issued'}">● ${v.status}</span>
+                <h3 style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 0.25rem;">${v.plate_number}</h3>
+                <div style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.5rem;">${v.offense || 'No Helmet'}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                  Ref: <b>${v.challan_id}</b> | Date: ${v.timestamp} | Camera: ${v.camera_id || 'Junction-01'}
+                </div>
+              </div>
+              <div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: ${isPaid ? '#4ade80' : '#f87171'}; margin-bottom: 0.75rem; text-align: right;">
+                  ₹${v.fine_amount.toLocaleString()}
+                </div>
+                ${!isPaid ? `
+                  <button class="btn-pay" onclick="openPayModal('${v.challan_id}', ${v.fine_amount})">💳 Pay Online Now</button>
+                ` : `
+                  <div style="text-align: right; color: #4ade80; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem;">✓ Settled Online</div>
+                `}
+                <a href="${pdf}" target="_blank" style="display: block; text-align: center; font-size: 0.8rem; color: #60a5fa; text-decoration: none;">📄 View Official Challan PDF</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        container.innerHTML = `<div style="text-align:center; color: #f87171;">Search error: ${err}</div>`;
+      }
+    }
+
+    function openPayModal(challanId, amount) {
+      activeChallanToPay = challanId;
+      document.getElementById('modalChallanText').textContent = `Challan Reference: ${challanId}`;
+      document.getElementById('modalAmount').textContent = `₹${amount.toLocaleString()}.00`;
+      
+      // Use our generated QR code from storage if available, or dynamic QR code API
+      document.getElementById('upiQrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=parivahan@sbi&pn=Traffic%20Authority&am=${amount}&tn=${challanId}`;
+      document.getElementById('payModal').style.display = 'flex';
+    }
+
+    function closePayModal() {
+      document.getElementById('payModal').style.display = 'none';
+      activeChallanToPay = null;
+    }
+
+    async function confirmPayment() {
+      if (!activeChallanToPay) return;
+      try {
+        const res = await fetch('/api/pay_challan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challan_id: activeChallanToPay })
+        });
+        if (res.ok) {
+          alert("🎉 Payment Successful! E-Challan has been marked as Settled.");
+          closePayModal();
+          searchChallans();
+        }
+      } catch (err) { alert("Payment error: " + err); }
+    }
+  </script>
+</body>
+</html>

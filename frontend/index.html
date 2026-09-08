@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartChallan AI — Municipal Command Center</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --surface: #111827;
+      --surface-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --cyan: #06b6d4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navigation */
+    .navbar {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-logo {
+      font-size: 1.6rem;
+    }
+
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-tag {
+      font-size: 0.7rem;
+      background: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-left: 6px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--text-main);
+      background-color: var(--surface-card);
+    }
+
+    .nav-link.active {
+      border-bottom: 2px solid var(--primary);
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+    }
+
+    /* Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Hero Banner */
+    .hero {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-content h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-content p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 750px;
+      line-height: 1.5;
+    }
+
+    .hero-badges {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .hero-badge {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .kpi-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .kpi-card.blue::before { background-color: var(--primary); }
+    .kpi-card.red::before { background-color: var(--danger); }
+    .kpi-card.green::before { background-color: var(--success); }
+    .kpi-card.cyan::before { background-color: var(--cyan); }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-icon {
+      font-size: 1.25rem;
+      opacity: 0.8;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .kpi-subtext {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Section Title */
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Modules Grid */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .module-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .module-card:hover {
+      border-color: var(--primary);
+      background-color: var(--surface-card);
+      transform: translateY(-3px);
+    }
+
+    .module-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .module-icon {
+      font-size: 1.8rem;
+      background: rgba(59, 130, 246, 0.1);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+
+    .module-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .module-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+
+    .module-cta {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* Table Card */
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background-color: var(--surface-card);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      color: var(--text-main);
+    }
+
+    tr:hover td {
+      background-color: rgba(30, 41, 59, 0.5);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge.red { background-color: var(--danger-bg); color: var(--danger); }
+    .badge.green { background-color: var(--success-bg); color: var(--success); }
+    .badge.yellow { background-color: var(--warning-bg); color: var(--warning); }
+
+    .plate-text {
+      font-family: monospace;
+      font-weight: 700;
+      color: #f87171;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      background-color: var(--surface);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <span class="brand-logo">🛡️</span>
+      <span class="brand-title">SmartChallan AI</span>
+      <span class="brand-tag">Edge Vision</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link active">⚡ Command Hub</a>
+      <a href="live_surveillance.html" class="nav-link">🔴 Live Surveillance</a>
+      <a href="challan_registry.html" class="nav-link">📑 Challan Registry</a>
+      <a href="analytics_dashboard.html" class="nav-link">📊 Analytics BI</a>
+      <a href="anpr_review.html" class="nav-link">🔍 ANPR Review</a>
+      <a href="citizen_portal.html" class="nav-link">💳 Citizen Portal</a>
+      <a href="system_settings.html" class="nav-link">⚙️ Settings</a>
+    </div>
+    <div class="system-status">
+      <div class="status-dot"></div>
+      <span>SYSTEM ACTIVE • 4 CAMERAS</span>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Hero Banner -->
+    <div class="hero">
+      <div class="hero-content">
+        <h1>Autonomous Helmet Violation Enforcement</h1>
+        <p>Turning standard city traffic feeds into 24/7 autonomous road-safety agents. Couples riders directly to motorcycles, tracks vehicles via ByteTrack, and issues court-ready E-Challans with photographic proof in seconds.</p>
+        <div class="hero-badges">
+          <span class="hero-badge">YOLOv8 Hierarchical Coupling</span>
+          <span class="hero-badge">ByteTrack De-Duplication</span>
+          <span class="hero-badge">Deep OCR (EasyOCR)</span>
+          <span class="hero-badge">FPDF2 Legal Citations</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-header">
+          <span class="kpi-title">Monitored Vehicles</span>
+          <span class="kpi-icon">🏍️</span>
+        </div>
+        <div class="kpi-value" id="kpi-vehicles">148</div>
+        <div class="kpi-subtext">Across 4 Connected Cameras</div>
+      </div>
+
+      <div class="kpi-card red">
+        <div class="kpi-header">
+          <span class="kpi-title">Violations Flagged</span>
+          <span class="kpi-icon">🚨</span>
+        </div>
+        <div class="kpi-value" style="color: var(--danger);" id="kpi-violations">14</div>
+        <div class="kpi-subtext">100% De-duplicated (ByteTrack)</div>
+      </div>
+
+      <div class="kpi-card green">
+        <div class="kpi-header">
+          <span class="kpi-title">Helmet Compliance</span>
+          <span class="kpi-icon">🛡️</span>
+        </div>
+        <div class="kpi-value" style="color: var(--success);" id="kpi-compliance">90.5%</div>
+        <div class="kpi-subtext">+3.2% vs Previous Week</div>
+      </div>
+
+      <div class="kpi-card cyan">
+        <div class="kpi-header">
+          <span class="kpi-title">Assessed Penalties</span>
+          <span class="kpi-icon">💰</span>
+        </div>
+        <div class="kpi-value" style="color: var(--cyan);" id="kpi-penalties">₹14,000</div>
+        <div class="kpi-subtext">₹8,000 Recovered (57%)</div>
+      </div>
+    </div>
+
+    <!-- Operational Command Modules -->
+    <h2 class="section-title">🚀 Operational Command Modules</h2>
+    <div class="modules-grid">
+
+      <a href="live_surveillance.html" class="module-card">
+        <div>
+          <div class="module-header">
+            <div class="module-icon">🔴</div>
+            <div class="module-title">Live Vision Surveillance</div>
+          </div>
+          <p class="module-desc">Real-time edge video monitoring. Renders spatial rider-bike pairing, ByteTrack persistent IDs, and streams live violation cards with instant PDF preview.</p>
+        </div>
+        <div class="module-cta">Open Live Stream →</div>
+      </a>
+
+      <a href="challan_registry.html" class="module-card">
+        <div>
+          <div class="module-header">
+            <div class="module-icon">📑</div>
+            <div class="module-title">E-Challan Registry & Vault</div>
+          </div>
+          <p class="module-desc">Central court-admissible audit log. Inspect tripartite photo evidence (Full Frame, Rider Head, Plate Crop) and download official signed A4 PDF citations.</p>
+        </div>
+        <div class="module-cta">Inspect Registry Vault →</div>
+      </a>
+
+      <a href="analytics_dashboard.html" class="module-card">
+        <div>
+          <div class="module-header">
+            <div class="module-icon">📊</div>
+            <div class="module-title">Safety Intelligence & BI</div>
+          </div>
+          <p class="module-desc">City-wide compliance trends, peak hour violation histograms, intersection hotspot rankings, and penalty revenue metrics for municipal planners.</p>
+        </div>
+        <div class="module-cta">View Safety Analytics →</div>
+      </a>
+
+      <a href="anpr_review.html" class="module-card">
+        <div>
+          <div class="module-header">
+            <div class="module-icon">🔍</div>
+            <div class="module-title">ANPR Review & Verification</div>
+          </div>
+          <p class="module-desc">Human-in-the-loop station for traffic officers to review low-confidence OCR readings, verify obscured plates, and seal or dismiss cases.</p>
+        </div>
+        <div class="module-cta">Open Review Desk →</div>
+      </a>
+
+      <a href="citizen_portal.html" class="module-card">
+        <div>
+          <div class="module-header">
+            <div class="module-icon">💳</div>
+            <div class="module-title">Citizen Self-Service Portal</div>
+          </div>
+          <p class="module-desc">Public-facing portal for citizens to search citations by vehicle registration number, inspect photo evidence, and settle fines via UPI QR.</p>
+        </div>
+        <div class="module-cta">Launch Citizen Portal →</div>
+      </a>
+
+      <a href="system_settings.html" class="module-card">
+        <div>
+          <div class="module-header">
+            <div class="module-icon">⚙️</div>
+            <div class="module-title">Edge System Diagnostics</div>
+          </div>
+          <p class="module-desc">Manage multi-camera RTSP inputs, calibrate YOLO confidence and ByteTrack debounce buffers, and inspect live CPU/RAM telemetry.</p>
+        </div>
+        <div class="module-cta">Configure Edge System →</div>
+      </a>
+
+    </div>
+
+    <!-- Recent Incident Audit Log -->
+    <div class="card">
+      <h2 class="section-title">⚡ Live Incident Audit Log (Recent Violations)</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Challan ID</th>
+              <th>Timestamp</th>
+              <th>Vehicle Plate</th>
+              <th>Camera Terminal</th>
+              <th>Fine Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="violations-tbody">
+            <tr>
+              <td><code>CH-20260908-1001</code></td>
+              <td>Today, 14:15:20</td>
+              <td><span class="plate-text">MH 12 AB 4592</span></td>
+              <td>CAM-NORTH-04 (Intersection 12)</td>
+              <td>₹1,000</td>
+              <td><span class="badge red">ISSUED</span></td>
+              <td><a href="challan_registry.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Proof →</a></td>
+            </tr>
+            <tr>
+              <td><code>CH-20260908-1002</code></td>
+              <td>Today, 13:48:11</td>
+              <td><span class="plate-text">KA 03 HA 8812</span></td>
+              <td>CAM-CENTRAL-01 (Central Square)</td>
+              <td>₹1,000</td>
+              <td><span class="badge green">PAID</span></td>
+              <td><a href="challan_registry.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">Receipt →</a></td>
+            </tr>
+            <tr>
+              <td><code>CH-20260908-1003</code></td>
+              <td>Today, 13:22:04</td>
+              <td><span class="plate-text">IND-TMP-14</span></td>
+              <td>CAM-SOUTH-02 (South Bypass)</td>
+              <td>₹1,000</td>
+              <td><span class="badge yellow">PENDING REVIEW</span></td>
+              <td><a href="anpr_review.html" style="color: var(--warning); text-decoration: none; font-weight: 600;">Verify Plate →</a></td>
+            </tr>
+            <tr>
+              <td><code>CH-20260908-1004</code></td>
+              <td>Today, 12:55:40</td>
+              <td><span class="plate-text">DL 01 CD 7731</span></td>
+              <td>CAM-NORTH-04 (Intersection 12)</td>
+              <td>₹1,000</td>
+              <td><span class="badge red">ISSUED</span></td>
+              <td><a href="challan_registry.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Proof →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    SmartChallan AI • Autonomous Edge Road Safety Enforcement Agent • Municipal Traffic Police Department
+  </footer>
+
+  <script>
+    // Live update simulation for Command Hub
+    console.log("SmartChallan AI Command Hub initialized.");
+  </script>
+</body>
+</html>

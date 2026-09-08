@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Challan Registry & Case Records — SmartChallan AI</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --surface: #111827;
+      --surface-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Navigation */
+    .navbar {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-main); }
+    .brand-logo { font-size: 1.6rem; }
+    .brand-title { font-weight: 800; font-size: 1.25rem; }
+    .brand-tag { font-size: 0.7rem; background: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
+    .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+    .nav-link { color: var(--text-muted); text-decoration: none; padding: 0.5rem 0.85rem; border-radius: 6px; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { color: var(--text-main); background-color: var(--surface-card); }
+    .nav-link.active { border-bottom: 2px solid var(--primary); }
+
+    /* Container */
+    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; width: 100%; flex: 1; }
+
+    /* Header Bar */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .page-title { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.35rem; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.95rem; }
+
+    /* KPI Summary Row */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .kpi-label { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .kpi-val { font-size: 1.8rem; font-weight: 800; color: var(--text-main); }
+    .kpi-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* Filter Toolbar */
+    .toolbar {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      background-color: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 260px;
+      max-width: 450px;
+    }
+    .search-box input {
+      background: none;
+      border: none;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+      width: 100%;
+    }
+    .filter-group { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .filter-select {
+      background-color: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .btn {
+      background-color: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.55rem 1.15rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn:hover { background-color: var(--primary-hover); }
+    .btn-secondary { background-color: var(--surface-card); color: var(--text-main); border: 1px solid var(--border); }
+    .btn-secondary:hover { background-color: rgba(255,255,255,0.05); }
+
+    /* Data Table */
+    .table-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th {
+      background-color: rgba(255, 255, 255, 0.02);
+      padding: 1rem 1.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 1rem 1.25rem;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      vertical-align: middle;
+    }
+    tr:hover td { background-color: rgba(255, 255, 255, 0.015); }
+
+    /* Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .status-issued { background-color: var(--danger-bg); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-paid { background-color: var(--success-bg); color: #4ade80; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-dismissed { background-color: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    .plate-badge {
+      font-family: 'Consolas', monospace;
+      font-weight: 800;
+      background: #0f172a;
+      border: 2px solid #e2e8f0;
+      color: #f8fafc;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      font-size: 0.85rem;
+      display: inline-block;
+    }
+
+    .thumb-preview {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background-color: #000;
+      cursor: pointer;
+    }
+
+    /* Modal for Evidence View */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1.5rem;
+    }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 2rem;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 1.25rem; right: 1.25rem;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+    .modal-evidence-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .evidence-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .evidence-box img { width: 100%; height: auto; object-fit: contain; }
+    .evidence-caption { padding: 0.5rem; font-size: 0.75rem; color: var(--text-muted); text-align: center; background: var(--surface-card); }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <span class="brand-logo">🛡️</span>
+      <span class="brand-title">SmartChallan AI</span>
+      <span class="brand-tag">v2.4</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">⚡ Command Hub</a>
+      <a href="live_surveillance.html" class="nav-link">🔴 Live Surveillance</a>
+      <a href="challan_registry.html" class="nav-link active">📑 Challan Registry</a>
+      <a href="analytics_dashboard.html" class="nav-link">📊 Analytics BI</a>
+      <a href="anpr_review.html" class="nav-link">🔍 ANPR Review</a>
+      <a href="citizen_portal.html" class="nav-link">💳 Citizen Portal</a>
+      <a href="system_settings.html" class="nav-link">⚙️ Settings</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">📑 E-Challan Registry & Case Records</h1>
+        <p class="page-subtitle">Central law enforcement registry tracking all vision-detected traffic citations and payment lifecycles.</p>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="btn btn-secondary" onclick="exportToCSV()">📥 Export CSV Report</button>
+        <button class="btn" onclick="fetchViolations()">🔄 Refresh Live Data</button>
+      </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Citations</span>
+        <span class="kpi-val" id="kpi-total">0</span>
+        <span class="kpi-sub">Across all camera nodes</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Active / Unpaid</span>
+        <span class="kpi-val" style="color: #f87171;" id="kpi-unpaid">0</span>
+        <span class="kpi-sub">Pending settlement</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Collected Penalties</span>
+        <span class="kpi-val" style="color: #4ade80;" id="kpi-collected">₹0</span>
+        <span class="kpi-sub">Via Parivahan Gateway</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Compliance Rate</span>
+        <span class="kpi-val" style="color: #38bdf8;" id="kpi-compliance">--%</span>
+        <span class="kpi-sub">Helmet adherence index</span>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="searchInput" placeholder="Search by Plate Number, Challan ID, or Camera..." oninput="filterTable()">
+      </div>
+      <div class="filter-group">
+        <select class="filter-select" id="statusFilter" onchange="filterTable()">
+          <option value="All">All Statuses</option>
+          <option value="Issued">Issued / Pending</option>
+          <option value="Paid">Paid / Settled</option>
+          <option value="Dismissed">Dismissed</option>
+        </select>
+        <select class="filter-select" id="sortFilter" onchange="filterTable()">
+          <option value="newest">Sort: Newest First</option>
+          <option value="highest">Sort: Highest Fine</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Proof</th>
+            <th>Challan ID</th>
+            <th>Date & Time</th>
+            <th>Vehicle Plate</th>
+            <th>Specific Offense</th>
+            <th>Fine Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="violationsTableBody">
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading live citations from database...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Evidence Modal -->
+  <div class="modal-overlay" id="evidenceModal">
+    <div class="modal">
+      <div class="modal-close" onclick="closeModal()">✕</div>
+      <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem;" id="modalChallanId">Challan Evidence</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem;" id="modalMeta"></p>
+
+      <div class="modal-evidence-grid">
+        <div class="evidence-box">
+          <img id="modalFullImg" src="" alt="Full Scene">
+          <div class="evidence-caption">Full Scene Capture at Detection Line</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="evidence-box">
+            <img id="modalRiderImg" src="" alt="Rider Crop">
+            <div class="evidence-caption">Head Region (No Helmet Proof)</div>
+          </div>
+          <div class="evidence-box">
+            <img id="modalPlateImg" src="" alt="Plate Crop">
+            <div class="evidence-caption">Isolated Number Plate Crop</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <div id="modalActionsLeft" style="display: flex; gap: 0.5rem;"></div>
+        <a id="modalPdfBtn" href="#" target="_blank" class="btn">📄 Download Official PDF Challan</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allViolations = [];
+
+    async function fetchViolations() {
+      try {
+        const [violsRes, kpisRes] = await Promise.all([
+          fetch('/api/violations?limit=250'),
+          fetch('/api/kpis')
+        ]);
+        allViolations = await violsRes.json();
+        const kpis = await kpisRes.json();
+        
+        // Update KPIs
+        document.getElementById('kpi-total').textContent = kpis.total_violations || allViolations.length;
+        document.getElementById('kpi-unpaid').textContent = allViolations.filter(v => v.status === 'Issued').length;
+        document.getElementById('kpi-collected').textContent = `₹${(kpis.collected_amount || 0).toLocaleString()}`;
+        document.getElementById('kpi-compliance').textContent = `${kpis.compliance_rate || 94.2}%`;
+
+        renderTable(allViolations);
+      } catch (err) {
+        console.error("Error loading registry:", err);
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('violationsTableBody');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">No matching violations found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(v => {
+        const statusClass = v.status === 'Paid' ? 'status-paid' : (v.status === 'Dismissed' ? 'status-dismissed' : 'status-issued');
+        const thumbUrl = v.plate_image_path ? `/${v.plate_image_path}` : (v.full_image_path ? `/${v.full_image_path}` : '');
+        const pdfUrl = v.pdf_path ? `/${v.pdf_path}` : '#';
+
+        return `
+          <tr>
+            <td>
+              ${thumbUrl ? `<img class="thumb-preview" src="${thumbUrl}" onclick="openModal('${v.challan_id}')" title="Click to view evidence">` : '📷'}
+            </td>
+            <td>
+              <b style="color: #fff;">${v.challan_id}</b>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${v.camera_id || 'CAM-01'}</div>
+            </td>
+            <td>
+              <div>${v.timestamp.split(' ')[0]}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${v.timestamp.split(' ')[1] || ''}</div>
+            </td>
+            <td>
+              <span class="plate-badge">${v.plate_number}</span>
+            </td>
+            <td>
+              <span style="font-size: 0.85rem; color: #cbd5e1;">${v.offense || 'No Helmet'}</span>
+            </td>
+            <td>
+              <b style="color: #f87171;">₹${v.fine_amount.toLocaleString()}</b>
+            </td>
+            <td>
+              <span class="status-badge ${statusClass}">
+                ● ${v.status}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="openModal('${v.challan_id}')">👁️ Proof</button>
+                <a class="btn" style="padding: 4px 8px; font-size: 0.75rem;" href="${pdfUrl}" target="_blank">📄 PDF</a>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterTable() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+      const sort = document.getElementById('sortFilter').value;
+
+      let filtered = allViolations.filter(v => {
+        const matchesQuery = v.plate_number.toLowerCase().includes(query) ||
+                             v.challan_id.toLowerCase().includes(query) ||
+                             (v.camera_id && v.camera_id.toLowerCase().includes(query));
+        const matchesStatus = status === 'All' || v.status === status;
+        return matchesQuery && matchesStatus;
+      });
+
+      if (sort === 'highest') {
+        filtered.sort((a, b) => b.fine_amount - a.fine_amount);
+      } else {
+        filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      }
+
+      renderTable(filtered);
+    }
+
+    function openModal(challanId) {
+      const v = allViolations.find(x => x.challan_id === challanId);
+      if (!v) return;
+
+      document.getElementById('modalChallanId').textContent = `Evidence Record: ${v.challan_id}`;
+      document.getElementById('modalMeta').textContent = `Vehicle: ${v.plate_number} | Recorded: ${v.timestamp} | Location: ${v.location || 'Central Junction'}`;
+      document.getElementById('modalFullImg').src = v.full_image_path ? `/${v.full_image_path}` : '';
+      document.getElementById('modalRiderImg').src = v.rider_image_path ? `/${v.rider_image_path}` : '';
+      document.getElementById('modalPlateImg').src = v.plate_image_path ? `/${v.plate_image_path}` : '';
+      document.getElementById('modalPdfBtn').href = v.pdf_path ? `/${v.pdf_path}` : '#';
+
+      const leftActions = document.getElementById('modalActionsLeft');
+      leftActions.innerHTML = '';
+
+      if (v.status === 'Issued') {
+        leftActions.innerHTML = `
+          <button class="btn" style="background-color: var(--success);" onclick="markPaid('${v.challan_id}')">💳 Settle / Mark Paid</button>
+          <button class="btn btn-secondary" style="color: #f87171;" onclick="dismissViolation('${v.challan_id}')">❌ Dismiss</button>
+        `;
+      }
+
+      document.getElementById('evidenceModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('evidenceModal').style.display = 'none';
+    }
+
+    async function markPaid(challanId) {
+      if (!confirm(`Mark citation ${challanId} as PAID?`)) return;
+      try {
+        const res = await fetch('/api/pay_challan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challan_id: challanId })
+        });
+        if (res.ok) {
+          closeModal();
+          fetchViolations();
+        }
+      } catch (err) { alert('Error updating status: ' + err); }
+    }
+
+    async function dismissViolation(challanId) {
+      const reason = prompt("Reason for dismissal (e.g., Authorized emergency vehicle, OCR false positive):", "False positive");
+      if (!reason) return;
+      try {
+        const res = await fetch('/api/dismiss_violation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challan_id: challanId, notes: reason })
+        });
+        if (res.ok) {
+          closeModal();
+          fetchViolations();
+        }
+      } catch (err) { alert('Error dismissing citation: ' + err); }
+    }
+
+    function exportToCSV() {
+      window.location.href = '/api/violations?limit=1000';
+    }
+
+    window.onload = fetchViolations;
+  </script>
+</body>
+</html>

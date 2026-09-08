@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Video Detection & Helmet Analysis — SmartChallan AI</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --surface: #111827;
+      --surface-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --cyan: #06b6d4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Navigation */
+    .navbar {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-main); }
+    .brand-logo { font-size: 1.6rem; }
+    .brand-title { font-weight: 800; font-size: 1.25rem; }
+    .brand-tag { font-size: 0.7rem; background: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
+    .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+    .nav-link { color: var(--text-muted); text-decoration: none; padding: 0.5rem 0.85rem; border-radius: 6px; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+    .nav-link:hover, .nav-link.active { color: var(--text-main); background-color: var(--surface-card); }
+    .nav-link.active { border-bottom: 2px solid var(--primary); }
+
+    .system-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success); padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+    .status-dot { width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }
+
+    /* Layout */
+    .container { max-width: 1550px; margin: 0 auto; padding: 1.5rem 2rem; width: 100%; flex: 1; display: flex; flex-direction: column; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .page-title { font-size: 1.5rem; font-weight: 800; }
+    .page-sub { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* Video Feed Selection & Upload Banner */
+    .feed-banner {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .feed-selector-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .select-dropdown {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      min-width: 260px;
+    }
+
+    .file-btn {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+    .file-btn input[type=file] {
+      position: absolute;
+      left: 0; top: 0; opacity: 0;
+      width: 100%; height: 100%;
+      cursor: pointer;
+    }
+
+    .main-grid { display: grid; grid-template-columns: 1fr 420px; gap: 1.5rem; flex: 1; }
+
+    /* Video Player Card */
+    .video-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .video-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .video-controls { display: flex; gap: 0.5rem; }
+    .btn {
+      background-color: var(--surface-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 0.55rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+    .btn:hover { background-color: #273549; border-color: #475569; }
+    .btn-primary { background-color: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-danger { background-color: var(--danger); border-color: var(--danger); color: #fff; }
+    .btn-success { background-color: var(--success); border-color: var(--success); color: #fff; }
+
+    /* Video Player Frame */
+    .canvas-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+    }
+
+    #stream-video-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    canvas { width: 100%; height: 100%; object-fit: contain; display: none; }
+
+    /* HUD Overlay */
+    .hud-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+    .hud-badge {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Legend Bar */
+    .legend-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* Metrics Strip */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    .metric-pill {
+      background-color: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+    .metric-pill-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .metric-pill-val { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
+
+    /* Right Ticker Column */
+    .ticker-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .ticker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .ticker-title { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+
+    .violation-stream {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      flex: 1;
+      max-height: 640px;
+      padding-right: 4px;
+    }
+
+    .incident-item {
+      background-color: var(--surface-card);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 1rem;
+      transition: all 0.2s;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.6rem;
+    }
+    .incident-plate {
+      font-family: monospace;
+      font-weight: 800;
+      color: #f87171;
+      font-size: 1rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .incident-tag {
+      background: var(--danger-bg);
+      color: var(--danger);
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .incident-crops {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .crop-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .crop-label {
+      position: absolute;
+      bottom: 2px;
+      left: 4px;
+      font-size: 0.65rem;
+      background: rgba(0,0,0,0.7);
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #fff;
+    }
+
+    .incident-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+    }
+
+    /* Modal */
+    dialog {
+      background: var(--surface);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      max-width: 650px;
+      width: 90%;
+      margin: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); }
+
+    /* Offline alert */
+    #server-alert {
+      display: none;
+      background: #78350f;
+      color: #fef3c7;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <span class="brand-logo">🛡️</span>
+      <span class="brand-title">SmartChallan AI</span>
+      <span class="brand-tag">Edge Vision</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">⚡ Command Hub</a>
+      <a href="live_surveillance.html" class="nav-link active">🔴 Live Surveillance</a>
+      <a href="challan_registry.html" class="nav-link">📑 Challan Registry</a>
+      <a href="analytics_dashboard.html" class="nav-link">📊 Analytics BI</a>
+      <a href="anpr_review.html" class="nav-link">🔍 ANPR Review</a>
+      <a href="citizen_portal.html" class="nav-link">💳 Citizen Portal</a>
+      <a href="system_settings.html" class="nav-link">⚙️ Settings</a>
+    </div>
+    <div class="system-status">
+      <div class="status-dot"></div>
+      <span id="backend-status-badge">AI PIPELINE READY</span>
+    </div>
+  </nav>
+
+  <!-- Container -->
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">🔴 Video Detection & Helmet Analysis Engine</h1>
+        <p class="page-sub">Upload raw traffic video • Detects Helmet vs NO HELMET • Spatial motorcycle pairing • Instant E-Challans</p>
+      </div>
+    </div>
+
+    <div id="server-alert">
+      ⚠️ Python backend server not detected. Please run <code>python server.py</code> in VS Code to enable real-time YOLOv8 video processing.
+    </div>
+
+    <!-- Feed Selector & Upload Banner -->
+    <div class="feed-banner">
+      <div class="feed-selector-group">
+        <div>
+          <label style="display:block; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:4px;">Select Video Feed:</label>
+          <select class="select-dropdown" id="video-select" onchange="onSelectVideo(this.value)">
+            <option value="Code_Execution.mp4">Code_Execution.mp4 (Sample Traffic Feed)</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <button class="btn" onclick="resetToDemo()">🎬 Reset to Default Video</button>
+        </div>
+      </div>
+
+      <div class="upload-zone" style="margin-top: 18px;">
+        <div class="file-btn">
+          <button class="btn btn-primary" id="btn-upload-label">📤 Upload New Raw Video (.mp4)</button>
+          <input type="file" id="video-file-input" accept="video/mp4,video/mov,video/avi" onchange="uploadCustomVideo(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Main 2-Column Grid -->
+    <div class="main-grid">
+
+      <!-- Left Column: Video Player -->
+      <div class="video-card">
+        <div class="video-toolbar">
+          <div class="video-controls">
+            <button class="btn btn-primary" id="btn-stream" onclick="toggleStream()">▶ Start AI Video Processing</button>
+            <button class="btn btn-success" id="btn-render" onclick="renderFullVideo()">⚡ Render & Export Full Video</button>
+            <button class="btn" onclick="toggleBoxes()">🎯 Toggle Overlays</button>
+          </div>
+          <div>
+            <span style="font-size: 0.8rem; color: var(--text-muted); background: var(--surface-card); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);">
+              Active Feed: <strong style="color: #60a5fa;" id="current-feed-name">Code_Execution.mp4</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Video Player Frame -->
+        <div class="canvas-wrapper">
+          <div class="hud-overlay">
+            <span class="hud-badge" style="border-color: var(--success); color: var(--success);" id="stream-live-tag">LIVE AI INFERENCE</span>
+            <span class="hud-badge" id="hud-cam">CAM-NORTH-04</span>
+            <span class="hud-badge" id="hud-time">14:35:10</span>
+          </div>
+
+          <!-- Real MJPEG video element from Python server -->
+          <img id="stream-video-img" alt="Live AI Detection Stream" src="/api/video_feed">
+
+          <!-- Fallback Simulator Canvas -->
+          <canvas id="vision-canvas" width="1280" height="720"></canvas>
+        </div>
+
+        <!-- Color Legend Bar -->
+        <div class="legend-bar">
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #10b981;"></div>
+            <span>[Helmet] Wearing Headgear (Compliant)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #ef4444;"></div>
+            <span>[NO HELMET] Violation Flagged (Fined)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #0284c7;"></div>
+            <span>[Motorcycle] Tracked Unit (ByteTrack)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #64748b;"></div>
+            <span>[Pedestrian] Ignored (No Bike Overlap)</span>
+          </div>
+        </div>
+
+        <!-- Real-Time Metrics Strip -->
+        <div class="metrics-bar">
+          <div class="metric-pill">
+            <div class="metric-pill-title">🟢 Wearing Helmet</div>
+            <div class="metric-pill-val" style="color: var(--success);" id="metric-helmet">-- Riders</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-pill-title">🔴 NOT Wearing Helmet</div>
+            <div class="metric-pill-val" style="color: var(--danger);" id="metric-no-helmet">-- Violators</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-pill-title">🏍️ Tracked Motorcycles</div>
+            <div class="metric-pill-val" style="color: var(--cyan);" id="metric-bikes">-- Units</div>
+          </div>
+          <div class="metric-pill">
+            <div class="metric-pill-title">🚶 Pedestrians Filtered</div>
+            <div class="metric-pill-val" style="color: var(--text-muted);" id="metric-pedestrians">-- Ignored</div>
+          </div>
+        </div>
+
+        <!-- Batch Video Output Card (Hidden initially) -->
+        <div id="render-output-box" style="display: none; background: var(--surface-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--success);">🎬 Rendered Annotated Video File Ready</h4>
+            <a id="download-video-link" href="#" download class="btn btn-primary" style="padding: 4px 10px; font-size: 0.8rem;">📥 Download MP4</a>
+          </div>
+          <video id="rendered-video-player" controls style="width: 100%; border-radius: 6px; max-height: 320px; background: #000;"></video>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Live Violation Ticker -->
+      <div class="ticker-card">
+        <div class="ticker-header">
+          <div class="ticker-title">
+            <span>🚨 Live Violation Feed</span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--surface-card); padding: 2px 8px; border-radius: 12px;" id="ticker-count">Active Monitor</span>
+        </div>
+
+        <!-- Stream Cards -->
+        <div class="violation-stream" id="violation-stream">
+          <!-- Card 1 -->
+          <div class="incident-item">
+            <div class="incident-header">
+              <span class="incident-plate">MH 12 AB 4592</span>
+              <span class="incident-tag">NO HELMET</span>
+            </div>
+            <div class="incident-crops">
+              <div class="crop-box" style="background: #2a1b1b;">
+                <span style="font-size: 1.8rem;">👤</span>
+                <span class="crop-label" style="background: rgba(220, 38, 38, 0.8);">Head [NO HELMET]</span>
+              </div>
+              <div class="crop-box" style="background: #1e293b;">
+                <span style="font-family: monospace; font-size: 0.85rem; font-weight: 700;">MH 12 AB 4592</span>
+                <span class="crop-label">Plate OCR (94%)</span>
+              </div>
+            </div>
+            <div class="incident-meta">
+              <div>Challan: <code>CH-20260908-1001</code> • Track #4</div>
+              <div>Location: Intersection 12, Ring Road North</div>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="previewChallan('CH-20260908-1001', 'MH 12 AB 4592', 'Track #4', 'Intersection 12')">
+              📄 View Generated E-Challan PDF
+            </button>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="incident-item">
+            <div class="incident-header">
+              <span class="incident-plate">IND-TMP-14</span>
+              <span class="incident-tag" style="background: var(--warning-bg); color: var(--warning);">REVIEW QUEUE</span>
+            </div>
+            <div class="incident-crops">
+              <div class="crop-box" style="background: #2a1b1b;">
+                <span style="font-size: 1.8rem;">👤</span>
+                <span class="crop-label" style="background: rgba(220, 38, 38, 0.8);">Head [NO HELMET]</span>
+              </div>
+              <div class="crop-box" style="background: #1e293b;">
+                <span style="font-family: monospace; font-size: 0.85rem; font-weight: 700;">IND-TMP-14</span>
+                <span class="crop-label">Plate (Mud Blur)</span>
+              </div>
+            </div>
+            <div class="incident-meta">
+              <div>Challan: <code>CH-20260908-1003</code> • Track #14</div>
+              <div>Location: South Bypass Flyover Exit</div>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="previewChallan('CH-20260908-1003', 'IND-TMP-14', 'Track #14', 'South Bypass')">
+              📄 View Generated E-Challan PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Interactive Challan PDF Preview Modal -->
+  <dialog id="challan-dialog">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="font-size: 1.3rem; font-weight: 800;">📑 Court-Admissible E-Challan Preview</h2>
+      <button class="btn" onclick="closeDialog()">✕ Close</button>
+    </div>
+    <div style="background: #fff; color: #111; padding: 1.5rem; border-radius: 8px; font-size: 0.9rem; line-height: 1.5;">
+      <div style="background: #182b49; color: #fff; padding: 10px; text-align: center; border-radius: 4px 4px 0 0;">
+        <h3 style="font-size: 1rem; margin:0;">MUNICIPAL TRAFFIC POLICE DEPARTMENT</h3>
+        <p style="font-size: 0.75rem; margin:0; opacity: 0.8;">NOTICE OF ROAD TRAFFIC OFFENSE (SECTION 129 / 194D MV ACT)</p>
+      </div>
+      <div style="padding: 12px; border: 1px solid #ddd; border-top: none;">
+        <table style="width: 100%; font-size: 0.85rem; margin-bottom: 1rem;">
+          <tr><td><strong>Challan ID:</strong> <span id="dlg-id">CH-20260908-1001</span></td><td><strong>Fine:</strong> INR 1,000</td></tr>
+          <tr><td><strong>Registration:</strong> <span id="dlg-plate" style="color: #b91c1c; font-weight: 700;">MH 12 AB 4592</span></td><td><strong>Track ID:</strong> <span id="dlg-track">#4</span></td></tr>
+          <tr><td><strong>Location:</strong> <span id="dlg-loc">Intersection 12</span></td><td><strong>Status:</strong> Dispatched</td></tr>
+        </table>
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px; margin-bottom: 1rem;">
+          <div style="background: #f1f5f9; height: 110px; border: 1px dashed #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #64748b; text-align: center;">
+            Full Frame Photographic Proof<br>(YOLO Spatial Link)
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="background: #fee2e2; height: 52px; border: 1px solid #f87171; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #991b1b; font-weight: 600;">
+              Zoomed Head [NO HELMET]
+            </div>
+            <div style="background: #e2e8f0; height: 52px; border: 1px solid #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #334155; font-weight: 600;">
+              Plate Crop [EasyOCR]
+            </div>
+          </div>
+        </div>
+        <div style="background: #f8fafc; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; color: #475569;">
+          STATUTORY CLAUSE: Riding without protective headgear conforming to BIS safety specifications constitutes a cognizable offense punishable under Section 194D MV Act with penalty of ₹1,000.
+        </div>
+      </div>
+    </div>
+    <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+      <button class="btn btn-primary" onclick="alert('PDF citation generated & downloaded successfully.')">📥 Download Court-Admissible PDF</button>
+    </div>
+  </dialog>
+
+  <!-- Interactive Vision Script -->
+  <script>
+    const streamImg = document.getElementById("stream-video-img");
+    const canvas = document.getElementById("vision-canvas");
+    const videoSelect = document.getElementById("video-select");
+
+    let isStreaming = true; // Auto start stream
+    let statsInterval = null;
+    let selectedVideo = "Code_Execution.mp4";
+
+    // 1. Fetch available videos from server and populate dropdown
+    function loadAvailableVideos() {
+      fetch('/api/available_videos')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("backend-status-badge").innerText = "CONNECTED TO PYTHON SERVER";
+          document.getElementById("server-alert").style.display = "none";
+
+          videoSelect.innerHTML = "";
+          data.videos.forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v.name;
+            opt.innerText = `${v.name} (${v.type} - ${v.size_mb} MB)`;
+            if (v.is_active) {
+              opt.selected = true;
+              selectedVideo = v.name;
+              document.getElementById("current-feed-name").innerText = v.name;
+            }
+            videoSelect.appendChild(opt);
+          });
+        })
+        .catch(() => {
+          document.getElementById("backend-status-badge").innerText = "OFFLINE (RUN PYTHON SERVER.PY)";
+          document.getElementById("server-alert").style.display = "block";
+        });
+    }
+
+    // 2. Switch video feed
+    function onSelectVideo(filename) {
+      selectedVideo = filename;
+      document.getElementById("current-feed-name").innerText = filename;
+
+      fetch('/api/select_video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: filename })
+      })
+      .then(res => res.json())
+      .then(() => {
+        // Force stream reconnection with new video
+        streamImg.src = "/api/video_feed?source=" + encodeURIComponent(filename) + "&t=" + Date.now();
+      })
+      .catch(() => {
+        streamImg.src = "/api/video_feed?source=" + encodeURIComponent(filename) + "&t=" + Date.now();
+      });
+    }
+
+    // 3. Upload custom raw video
+    function uploadCustomVideo(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append("video", file);
+
+      const label = document.getElementById("btn-upload-label");
+      label.innerText = `Uploading ${file.name}...`;
+
+      fetch('/api/upload_video', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        label.innerText = "📤 Upload New Raw Video (.mp4)";
+        if (data.status === 'success') {
+          alert(`Video "${data.filename}" uploaded successfully!\nSwitching live AI detection to this new video.`);
+          selectedVideo = data.filename;
+          document.getElementById("current-feed-name").innerText = data.filename;
+
+          // Reload list and switch stream
+          loadAvailableVideos();
+          streamImg.src = "/api/video_feed?source=" + encodeURIComponent(data.filename) + "&t=" + Date.now();
+        }
+      })
+      .catch(err => {
+        label.innerText = "📤 Upload New Raw Video (.mp4)";
+        alert("Upload failed. Make sure 'python server.py' is running in VS Code!");
+      });
+    }
+
+    // 4. Reset to default video
+    function resetToDemo() {
+      onSelectVideo("Code_Execution.mp4");
+    }
+
+    // 5. Toggle streaming playback
+    function toggleStream() {
+      isStreaming = !isStreaming;
+      const btn = document.getElementById("btn-stream");
+
+      if (isStreaming) {
+        btn.innerHTML = "⏹ Pause AI Processing";
+        btn.classList.add("btn-danger");
+        btn.classList.remove("btn-primary");
+        streamImg.src = "/api/video_feed?source=" + encodeURIComponent(selectedVideo) + "&t=" + Date.now();
+        startStatsPolling();
+      } else {
+        btn.innerHTML = "▶ Start AI Video Processing";
+        btn.classList.remove("btn-danger");
+        btn.classList.add("btn-primary");
+        streamImg.src = "";
+        clearInterval(statsInterval);
+      }
+    }
+
+    // 6. Poll real-time detection stats from Python
+    function startStatsPolling() {
+      clearInterval(statsInterval);
+      statsInterval = setInterval(() => {
+        fetch('/api/stream_stats')
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.is_running) {
+              document.getElementById("metric-helmet").innerText = `${data.wearing_helmet || 0} Riders`;
+              document.getElementById("metric-no-helmet").innerText = `${data.no_helmet || 0} Violators`;
+              document.getElementById("metric-bikes").innerText = `${data.active_bikes || 0} Units`;
+              document.getElementById("metric-pedestrians").innerText = `${data.pedestrians_filtered || 0} Ignored`;
+            }
+          })
+          .catch(() => {});
+      }, 1000);
+    }
+
+    // 7. Render & Export Full Video (Batch Processor)
+    function renderFullVideo() {
+      const btn = document.getElementById("btn-render");
+      btn.innerHTML = "⏳ Processing Video (Please wait)...";
+      btn.disabled = true;
+
+      fetch('/api/process_video_sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: selectedVideo, max_frames: 200 })
+      })
+      .then(res => res.json())
+      .then(data => {
+        btn.innerHTML = "⚡ Render & Export Full Video";
+        btn.disabled = false;
+
+        if (data.status === 'success') {
+          const outBox = document.getElementById("render-output-box");
+          const dlLink = document.getElementById("download-video-link");
+          const player = document.getElementById("rendered-video-player");
+
+          outBox.style.display = "block";
+          dlLink.href = data.output_url;
+          player.src = data.output_url;
+
+          alert(`Batch Processing Complete!\n\n• Processed: ${data.frames_processed} frames\n• Time: ${data.elapsed_seconds}s\n• Tracked Vehicles: ${data.total_vehicles_tracked}\n• Violations Detected: ${data.violations_detected}`);
+        } else {
+          alert("Error processing video: " + (data.error || "Unknown"));
+        }
+      })
+      .catch(err => {
+        btn.innerHTML = "⚡ Render & Export Full Video";
+        btn.disabled = false;
+        alert("Batch processing request failed. Ensure server.py is running!");
+      });
+    }
+
+    function toggleBoxes() {
+      alert("AI model detections (Helmet in Green, NO HELMET in Red, Motorcycle in Cyan) are rendered in real time onto every video frame.");
+    }
+
+    function previewChallan(id, plate, track, loc) {
+      document.getElementById("dlg-id").innerText = id;
+      document.getElementById("dlg-plate").innerText = plate;
+      document.getElementById("dlg-track").innerText = track;
+      document.getElementById("dlg-loc").innerText = loc;
+      document.getElementById("challan-dialog").showModal();
+    }
+
+    function closeDialog() {
+      document.getElementById("challan-dialog").close();
+    }
+
+    // Clock
+    setInterval(() => {
+      const d = new Date();
+      document.getElementById("hud-time").innerText = d.toTimeString().split(" ")[0];
+    }, 1000);
+
+    // Initial load
+    loadAvailableVideos();
+    startStatsPolling();
+  </script>
+</body>
+</html>
