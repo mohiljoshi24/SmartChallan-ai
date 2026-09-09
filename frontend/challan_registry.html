@@ -548,7 +548,11 @@
       window.location.href = '/api/violations?limit=1000';
     }
 
-    window.onload = fetchViolations;
+    window.onload = () => {
+      fetchViolations();
+      // Auto-refresh registry table every 4 seconds to reflect newly processed stream violations
+      setInterval(fetchViolations, 4000);
+    };
   </script>
 </body>
 </html>

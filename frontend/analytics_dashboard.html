@@ -343,7 +343,10 @@
       });
     }
 
-    window.onload = loadAnalytics;
+    window.onload = () => {
+      loadAnalytics();
+      setInterval(loadAnalytics, 5000);
+    };
   </script>
 </body>
 </html>

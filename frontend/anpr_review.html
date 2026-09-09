@@ -367,7 +367,15 @@
       setTimeout(() => { t.style.display = 'none'; }, 3000);
     }
 
-    window.onload = loadReviewQueue;
+    window.onload = () => {
+      loadReviewQueue();
+      // Auto-refresh review queue every 5 seconds
+      setInterval(() => {
+        if (reviewQueue.length === 0 || currentIndex >= reviewQueue.length) {
+          loadReviewQueue();
+        }
+      }, 5000);
+    };
   </script>
 </body>
 </html>

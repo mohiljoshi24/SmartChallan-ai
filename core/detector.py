@@ -94,7 +94,7 @@ class HierarchicalHelmetDetector:
                     motorcycles.append({"box": (x1, y1, x2, y2), "conf": float(conf)})
 
         # 2. Run custom helmet model on frame (or head regions)
-        helmet_results = self.helmet_model(frame, conf=0.40, verbose=False)[0]
+        helmet_results = self.helmet_model(frame, conf=0.20, verbose=False)[0]
         helmet_detections = []
         if helmet_results.boxes is not None and len(helmet_results.boxes) > 0:
             h_boxes = helmet_results.boxes.xyxy.cpu().numpy()
@@ -120,16 +120,27 @@ class HierarchicalHelmetDetector:
 
             for p_idx, person in enumerate(persons):
                 p_box = person["box"]
-                # Spatial check: person horizontal center should be near motorcycle width
-                p_cx = (p_box[0] + p_box[2]) / 2.0
+                # Calculate spatial overlap
                 overlap = calculate_overlap_ratio(p_box, b_box)
 
-                # Rider torso/feet sits within or slightly above bike
-                is_above_or_overlapping = (p_box[3] >= b_box[1]) and (b_box[0] - 20 <= p_cx <= b_box[2] + 20)
-
-                if (overlap > self.overlap_thresh or is_above_or_overlapping) and overlap > max_overlap:
-                    max_overlap = overlap
-                    best_person = (p_idx, person)
+                # Posture & positioning verification:
+                # 1. Rider head/torso should be positioned predominantly in the upper half of the bike
+                # 2. Rider bottom (feet/hips) should not extend far below the motorcycle wheels
+                # 3. Rider center must align horizontally with motorcycle
+                p_cx = (p_box[0] + p_box[2]) / 2.0
+                p_height = p_box[3] - p_box[1]
+                b_height = b_box[3] - b_box[1]
+                
+                # Check if person is seated on the bike rather than standing behind/away
+                is_centered = (b_box[0] - 15 <= p_cx <= b_box[2] + 15)
+                # Head must be above the bike's bottom half, and feet cannot be far below the bike
+                is_seated_vertically = (p_box[1] < b_box[1] + 0.40 * b_height) and (p_box[3] <= b_box[3] + 0.20 * b_height)
+                
+                # Enforce either significant geometric overlap (seated rider) OR clean seated vertical alignment with reasonable overlap
+                if is_centered and is_seated_vertically and (overlap >= 0.22):
+                    if overlap > max_overlap:
+                        max_overlap = overlap
+                        best_person = (p_idx, person)
 
             # Determine helmet state for the confirmed rider
             rider_box = best_person[1]["box"] if best_person else None
@@ -147,7 +158,7 @@ class HierarchicalHelmetDetector:
                 rider_crop = frame[ry1:ry2, rx1:rx2].copy()
 
                 # Approximate head region: upper 40% of rider bounding box
-                head_y2 = ry1 + int((ry2 - ry1) * 0.42)
+                head_y2 = ry1 + int((ry2 - ry1) * 0.45)
                 head_box = (rx1, ry1, rx2, head_y2)
                 if head_y2 > ry1:
                     head_crop = frame[ry1:head_y2, rx1:rx2].copy()
@@ -158,7 +169,7 @@ class HierarchicalHelmetDetector:
                     h_box = hd["box"]
                     # Check overlap between helmet detection and head region
                     h_overlap = calculate_overlap_ratio(h_box, head_box)
-                    if h_overlap > 0.20 or calculate_overlap_ratio(h_box, rider_box) > 0.20:
+                    if h_overlap > 0.15 or calculate_overlap_ratio(h_box, rider_box) > 0.15:
                         matched_helmet = hd
                         break
 
@@ -167,17 +178,20 @@ class HierarchicalHelmetDetector:
                     helmet_conf = matched_helmet["conf"]
                 else:
                     # Direct inference on head crop if no global match
-                    if head_crop is not None and head_crop.shape[0] > 20 and head_crop.shape[1] > 20:
-                        sub_res = self.helmet_model(head_crop, conf=0.35, verbose=False)[0]
+                    if head_crop is not None and head_crop.shape[0] > 15 and head_crop.shape[1] > 15:
+                        sub_res = self.helmet_model(head_crop, conf=0.18, verbose=False)[0]
                         if sub_res.boxes is not None and len(sub_res.boxes) > 0:
                             s_cls = int(sub_res.boxes.cls.cpu().numpy()[0])
                             s_conf = float(sub_res.boxes.conf.cpu().numpy()[0])
                             helmet_status = "Helmet" if s_cls == 0 else "NO HELMET"
                             helmet_conf = s_conf
                         else:
-                            # Default fallback based on confidence
-                            helmet_status = "Helmet"
-                            helmet_conf = 0.60
+                            # A rider with a visible head but NO helmet detected is a violator (NO HELMET)
+                            helmet_status = "NO HELMET"
+                            helmet_conf = 0.65
+                    else:
+                        helmet_status = "NO HELMET"
+                        helmet_conf = 0.55
             else:
                 # Motorcycle detected without an isolated person box (e.g. at distance or occlusion)
                 # Check if any helmet detection is inside the upper half of the bike

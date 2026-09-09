@@ -78,21 +78,25 @@ def serve_static_page(path):
 
 
 # 2. Serve Storage Assets (Evidence, PDFs, Uploads, Processed Videos)
-@app.route("/storage/evidence/<filename>")
+@app.route("/storage/evidence/<path:filename>")
 def serve_evidence(filename):
-    return send_from_directory(EVIDENCE_DIR, filename)
+    fname = os.path.basename(filename)
+    return send_from_directory(EVIDENCE_DIR, fname)
 
-@app.route("/storage/challans/<filename>")
+@app.route("/storage/challans/<path:filename>")
 def serve_challan_pdf(filename):
-    return send_from_directory(CHALLANS_DIR, filename)
+    fname = os.path.basename(filename)
+    return send_from_directory(CHALLANS_DIR, fname)
 
-@app.route("/storage/uploads/<filename>")
+@app.route("/storage/uploads/<path:filename>")
 def serve_upload(filename):
-    return send_from_directory(UPLOADS_DIR, filename)
+    fname = os.path.basename(filename)
+    return send_from_directory(UPLOADS_DIR, fname)
 
-@app.route("/storage/processed/<filename>")
+@app.route("/storage/processed/<path:filename>")
 def serve_processed(filename):
-    return send_from_directory(PROCESSED_DIR, filename)
+    fname = os.path.basename(filename)
+    return send_from_directory(PROCESSED_DIR, fname)
 
 
 # 3. Video Upload, Available List & Source Selection

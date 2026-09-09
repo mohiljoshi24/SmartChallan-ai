@@ -503,56 +503,10 @@
           <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--surface-card); padding: 2px 8px; border-radius: 12px;" id="ticker-count">Active Monitor</span>
         </div>
 
-        <!-- Stream Cards -->
+        <!-- Stream Cards (Dynamically populated from real database / stream) -->
         <div class="violation-stream" id="violation-stream">
-          <!-- Card 1 -->
-          <div class="incident-item">
-            <div class="incident-header">
-              <span class="incident-plate">MH 12 AB 4592</span>
-              <span class="incident-tag">NO HELMET</span>
-            </div>
-            <div class="incident-crops">
-              <div class="crop-box" style="background: #2a1b1b;">
-                <span style="font-size: 1.8rem;">👤</span>
-                <span class="crop-label" style="background: rgba(220, 38, 38, 0.8);">Head [NO HELMET]</span>
-              </div>
-              <div class="crop-box" style="background: #1e293b;">
-                <span style="font-family: monospace; font-size: 0.85rem; font-weight: 700;">MH 12 AB 4592</span>
-                <span class="crop-label">Plate OCR (94%)</span>
-              </div>
-            </div>
-            <div class="incident-meta">
-              <div>Challan: <code>CH-20260908-1001</code> • Track #4</div>
-              <div>Location: Intersection 12, Ring Road North</div>
-            </div>
-            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="previewChallan('CH-20260908-1001', 'MH 12 AB 4592', 'Track #4', 'Intersection 12')">
-              📄 View Generated E-Challan PDF
-            </button>
-          </div>
-
-          <!-- Card 2 -->
-          <div class="incident-item">
-            <div class="incident-header">
-              <span class="incident-plate">IND-TMP-14</span>
-              <span class="incident-tag" style="background: var(--warning-bg); color: var(--warning);">REVIEW QUEUE</span>
-            </div>
-            <div class="incident-crops">
-              <div class="crop-box" style="background: #2a1b1b;">
-                <span style="font-size: 1.8rem;">👤</span>
-                <span class="crop-label" style="background: rgba(220, 38, 38, 0.8);">Head [NO HELMET]</span>
-              </div>
-              <div class="crop-box" style="background: #1e293b;">
-                <span style="font-family: monospace; font-size: 0.85rem; font-weight: 700;">IND-TMP-14</span>
-                <span class="crop-label">Plate (Mud Blur)</span>
-              </div>
-            </div>
-            <div class="incident-meta">
-              <div>Challan: <code>CH-20260908-1003</code> • Track #14</div>
-              <div>Location: South Bypass Flyover Exit</div>
-            </div>
-            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="previewChallan('CH-20260908-1003', 'IND-TMP-14', 'Track #14', 'South Bypass')">
-              📄 View Generated E-Challan PDF
-            </button>
+          <div id="violation-empty" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
+            🛰️ Real-time violation monitor active.<br>Awaiting confirmed moving helmet violations...
           </div>
         </div>
       </div>
@@ -715,14 +669,61 @@
       }
     }
 
-    // 6. Poll real-time detection stats from Python
+    // 6. Poll real-time detection stats and live violations from Python
+    function renderLiveViolations(violations) {
+      const container = document.getElementById("violation-stream");
+      if (!violations || violations.length === 0) {
+        container.innerHTML = `
+          <div id="violation-empty" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
+            🛰️ Real-time violation monitor active.<br>Awaiting confirmed moving helmet violations...
+          </div>`;
+        return;
+      }
+
+      document.getElementById("ticker-count").innerText = `${violations.length} Violations`;
+      container.innerHTML = violations.slice(0, 15).map(v => {
+        const isReview = (v.status === "Pending Review" || (v.plate_number && v.plate_number.includes("TMP")));
+        const tagText = isReview ? "REVIEW QUEUE" : "NO HELMET";
+        const tagStyle = isReview ? "background: var(--warning-bg); color: var(--warning);" : "";
+        const plateText = v.plate_number || "IND-TMP-00";
+        const plateThumb = v.plate_image_path ? `/${v.plate_image_path}` : "";
+        const riderThumb = v.rider_image_path ? `/${v.rider_image_path}` : "";
+
+        return `
+          <div class="incident-item">
+            <div class="incident-header">
+              <span class="incident-plate">${plateText}</span>
+              <span class="incident-tag" style="${tagStyle}">${tagText}</span>
+            </div>
+            <div class="incident-crops">
+              <div class="crop-box" style="background: #2a1b1b; overflow: hidden;">
+                ${riderThumb ? `<img src="${riderThumb}" style="width:100%; height:100%; object-fit:cover;" onerror="this.outerHTML='<span style=\\'font-size:1.8rem;\\'>👤</span>'">` : `<span style="font-size: 1.8rem;">👤</span>`}
+                <span class="crop-label" style="background: rgba(220, 38, 38, 0.8);">Head [NO HELMET]</span>
+              </div>
+              <div class="crop-box" style="background: #1e293b; overflow: hidden;">
+                ${plateThumb ? `<img src="${plateThumb}" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-family:monospace;font-size:0.85rem;font-weight:700;\\'>${plateText}</span>'">` : `<span style="font-family: monospace; font-size: 0.85rem; font-weight: 700;">${plateText}</span>`}
+                <span class="crop-label">Plate Crop</span>
+              </div>
+            </div>
+            <div class="incident-meta">
+              <div>Challan: <code>${v.challan_id}</code> • Track #${v.track_id}</div>
+              <div>Location: ${v.location || "Traffic Surveillance Zone"}</div>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="previewChallan('${v.challan_id}', '${plateText}', 'Track #${v.track_id}', '${v.location || 'Surveillance Zone'}')">
+              📄 View Generated E-Challan PDF
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
     function startStatsPolling() {
       clearInterval(statsInterval);
       statsInterval = setInterval(() => {
         fetch('/api/stream_stats')
           .then(res => res.json())
           .then(data => {
-            if (data && data.is_running) {
+            if (data) {
               document.getElementById("metric-helmet").innerText = `${data.wearing_helmet || 0} Riders`;
               document.getElementById("metric-no-helmet").innerText = `${data.no_helmet || 0} Violators`;
               document.getElementById("metric-bikes").innerText = `${data.active_bikes || 0} Units`;
@@ -730,7 +731,14 @@
             }
           })
           .catch(() => {});
-      }, 1000);
+
+        fetch('/api/violations?limit=15')
+          .then(res => res.json())
+          .then(violations => {
+            renderLiveViolations(violations);
+          })
+          .catch(() => {});
+      }, 1200);
     }
 
     // 7. Render & Export Full Video (Batch Processor)

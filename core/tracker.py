@@ -8,7 +8,7 @@ import os
 import cv2
 import numpy as np
 from datetime import datetime
-from typing import Dict, Set, List, Optional, Any
+from typing import Dict, Set, List, Optional, Any, Tuple
 from ultralytics import YOLO
 
 from core.anpr import extract_plate_roi, read_license_plate
@@ -43,6 +43,8 @@ class VehicleViolationTracker:
         self.processed_track_ids: Set[int] = set()
         self.total_tracked_vehicles: Set[int] = set()
         self.recent_violations: List[Dict[str, Any]] = []
+        # Trajectory history for velocity and stationary filtering: {t_id: [(cx, cy, frame_idx), ...]}
+        self.track_positions: Dict[int, List[Tuple[float, float, int]]] = {}
 
     def reset_session(self):
         """Resets the tracking cache for a new video stream."""
@@ -50,6 +52,7 @@ class VehicleViolationTracker:
         self.processed_track_ids.clear()
         self.total_tracked_vehicles.clear()
         self.recent_violations.clear()
+        self.track_positions.clear()
 
     def process_frame(
         self,
@@ -122,18 +125,43 @@ class VehicleViolationTracker:
             helmet_status = matched_unit.get("helmet_status", "UNKNOWN") if matched_unit else "UNKNOWN"
             helmet_conf = matched_unit.get("helmet_conf", 0.0) if matched_unit else 0.0
             rider_box = matched_unit.get("rider_box") if matched_unit else None
+            has_rider = matched_unit.get("has_rider", False) if matched_unit else False
+
+            # Motion & Stationary vehicle analysis
+            bcx = (tb_box[0] + tb_box[2]) / 2.0
+            bcy = (tb_box[1] + tb_box[3]) / 2.0
+            if t_id not in self.track_positions:
+                self.track_positions[t_id] = []
+            self.track_positions[t_id].append((bcx, bcy, frame_idx))
+            if len(self.track_positions[t_id]) > 30:
+                self.track_positions[t_id].pop(0)
+
+            # Measure spatial displacement over the observed tracking history
+            pts = self.track_positions[t_id]
+            is_stationary = False
+            if len(pts) >= 6:
+                dx = pts[-1][0] - pts[0][0]
+                dy = pts[-1][1] - pts[0][1]
+                displacement = (dx**2 + dy**2)**0.5
+                # If bike has moved less than 12 pixels across 6+ frames, it is parked/stationary
+                if displacement < 12.0:
+                    is_stationary = True
 
             # 3. Update violation streak
-            if helmet_status == "NO HELMET":
+            # Only moving vehicles with confirmed riders can accumulate violation points
+            if helmet_status == "NO HELMET" and has_rider and not is_stationary:
                 self.consecutive_no_helmet[t_id] = self.consecutive_no_helmet.get(t_id, 0) + 1
-            else:
-                # Gradual decay or reset
-                self.consecutive_no_helmet[t_id] = 0
+            elif helmet_status == "Helmet" or is_stationary or not has_rider:
+                # Gradual decay if helmet confirmed, or if vehicle is stationary / rider absent
+                if helmet_conf > 0.50 or is_stationary:
+                    self.consecutive_no_helmet[t_id] = max(0, self.consecutive_no_helmet.get(t_id, 0) - 1)
 
-            # 4. Check for newly confirmed violation
+            # 4. Check for newly confirmed violation (requires moving motorcycle with rider)
             is_confirmed_violation = (
                 self.consecutive_no_helmet.get(t_id, 0) >= self.consecutive_frames_thresh and
-                t_id not in self.processed_track_ids
+                t_id not in self.processed_track_ids and
+                not is_stationary and
+                has_rider
             )
 
             if is_confirmed_violation:
@@ -235,6 +263,12 @@ class VehicleViolationTracker:
             if is_fined:
                 color = (0, 0, 230)  # Bright Red
                 status_text = f"VIOLATION FINED | Track #{t_id}"
+            elif is_stationary:
+                color = (180, 180, 180)  # Muted Gray / Neutral
+                status_text = f"Bike #{t_id} (Stationary)"
+            elif not has_rider:
+                color = (200, 200, 0)  # Yellow
+                status_text = f"Bike #{t_id} (Parked)"
             elif helmet_status == "NO HELMET":
                 color = (0, 140, 255)  # Orange (Pending threshold)
                 streak = self.consecutive_no_helmet.get(t_id, 0)

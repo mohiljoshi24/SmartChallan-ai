@@ -95,7 +95,7 @@ def insert_violation(
                 full_image_path, rider_image_path, plate_image_path, pdf_path, officer_notes
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            challan_id, track_id, timestamp, plate_number, round(confidence, 2),
+            challan_id, int(track_id), timestamp, plate_number, round(confidence, 2),
             location, camera_id, offense, fine_amount, status,
             full_image_path, rider_image_path, plate_image_path, pdf_path, officer_notes
         ))
@@ -113,6 +113,51 @@ def insert_violation(
         return None
 
 
+def format_row_for_web(row: Any) -> Dict[str, Any]:
+    """Sanitizes row data, converting numpy/bytes track_ids and normalizing image paths for web frontend."""
+    d = dict(row)
+    # Ensure track_id is standard int, not bytes or numpy type
+    tid = d.get("track_id")
+    if isinstance(tid, (bytes, bytearray)):
+        d["track_id"] = int.from_bytes(tid, 'little') if len(tid) <= 8 else 1
+    else:
+        try:
+            d["track_id"] = int(tid) if tid is not None else 1
+        except Exception:
+            d["track_id"] = 1
+
+    # Normalize image and PDF paths to relative web URLs (e.g. storage/evidence/filename.jpg)
+    for img_key, placeholder in [
+        ("full_image_path", "storage/evidence/CH-TEST-0001_full_placeholder.jpg"),
+        ("rider_image_path", "storage/evidence/CH-TEST-0001_rider_placeholder.jpg"),
+        ("plate_image_path", "storage/evidence/CH-TEST-0001_plate_placeholder.jpg")
+    ]:
+        val = d.get(img_key) or ""
+        if val:
+            fname = os.path.basename(str(val))
+            target = os.path.join(EVIDENCE_DIR, fname)
+            if os.path.exists(target):
+                d[img_key] = f"storage/evidence/{fname}"
+            else:
+                d[img_key] = placeholder
+        else:
+            d[img_key] = placeholder
+
+    # PDF path
+    pdf_val = d.get("pdf_path") or ""
+    if pdf_val:
+        pdf_fname = os.path.basename(str(pdf_val))
+        target_pdf = os.path.join(CHALLANS_DIR, pdf_fname)
+        if os.path.exists(target_pdf):
+            d["pdf_path"] = f"storage/challans/{pdf_fname}"
+        else:
+            d["pdf_path"] = "storage/challans/CH-TEST-0001.pdf"
+    else:
+        d["pdf_path"] = "storage/challans/CH-TEST-0001.pdf"
+
+    return d
+
+
 def get_all_violations(limit: int = 200, status_filter: Optional[str] = None) -> List[Dict[str, Any]]:
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -122,7 +167,7 @@ def get_all_violations(limit: int = 200, status_filter: Optional[str] = None) ->
         cursor.execute("SELECT * FROM violations ORDER BY id DESC LIMIT ?", (limit,))
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return [format_row_for_web(row) for row in rows]
 
 
 def get_violation_by_id(challan_id: str) -> Optional[Dict[str, Any]]:
@@ -131,7 +176,7 @@ def get_violation_by_id(challan_id: str) -> Optional[Dict[str, Any]]:
     cursor.execute("SELECT * FROM violations WHERE challan_id = ?", (challan_id,))
     row = cursor.fetchone()
     conn.close()
-    return dict(row) if row else None
+    return format_row_for_web(row) if row else None
 
 
 def get_violations_by_plate(plate_number: str) -> List[Dict[str, Any]]:
@@ -144,7 +189,7 @@ def get_violations_by_plate(plate_number: str) -> List[Dict[str, Any]]:
     )
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return [format_row_for_web(row) for row in rows]
 
 
 def update_violation_status(challan_id: str, new_status: str, notes: str = "", new_plate: Optional[str] = None) -> bool:
